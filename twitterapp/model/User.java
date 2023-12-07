@@ -13,6 +13,8 @@ public class User extends Subject implements Composite, Observer {
     private ArrayList<String> followingList = new ArrayList<>();
     private DefaultListModel userListModel = new DefaultListModel();
     private DefaultListModel<String> messageListModel = new DefaultListModel();
+    private long creationTime; // create time 
+    private long lastUpdateTime;
 
     // the message count
     private ArrayList<String> messageArrayList = new ArrayList<>();
@@ -29,6 +31,8 @@ public class User extends Subject implements Composite, Observer {
     public User(String studentName) {
         this.userName = studentName;
         this.userID = UUID.randomUUID().toString();
+        this.creationTime = System.currentTimeMillis(); // Initialize creationTime
+
     }
 
 
@@ -46,6 +50,22 @@ public class User extends Subject implements Composite, Observer {
 
     public DefaultListModel getMessageListModel() {
         return messageListModel;
+    }
+
+    public String getID() {
+        return userID;
+    }
+
+    public long getCreationTime() {
+        return creationTime;
+    }
+
+    public long getLastUpdateTime() {
+        return lastUpdateTime;
+    }
+
+    public void setLastUpdateTime(long lastUpdateTime) {
+        this.lastUpdateTime = lastUpdateTime;
     }
 
     // Visitor pattern method to accept a visitor
@@ -68,5 +88,7 @@ public class User extends Subject implements Composite, Observer {
     public ArrayList<String> getMessageArrayList() {
         return messageArrayList;
     }
+    
+    
 
 }

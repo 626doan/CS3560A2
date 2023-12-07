@@ -9,6 +9,8 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
+import java.util.Set;
+import java.util.HashSet;
 import twitterapp.model.User;
 import twitterapp.model.Group;
 import twitterapp.model.Composite;
@@ -34,6 +36,9 @@ public class AdminPanel extends JPanel {
     private JButton showGroupTotalButton, showMessagesTotalButton, showPositivePercentageButton;
     private ArrayList<User> userArrayList;
     private ArrayList<String> userNameArrayList;
+    private JButton validateIDsButton, findLastUpdatedUserButton;  // New button for A3
+
+
 
     public AdminPanel() {
         super(new GridLayout(1, 0));
@@ -62,6 +67,9 @@ public class AdminPanel extends JPanel {
         showGroupTotalButton = new JButton("Show Group Total");
         showMessagesTotalButton = new JButton("Show Messages Total");
         showPositivePercentageButton = new JButton("Show Positive Percentage Total");
+        validateIDsButton = new JButton("Validate ID");
+        findLastUpdatedUserButton = new JButton("Find Last Updated User");
+
 
         JScrollPane buttonView = new JScrollPane(rightPanel);
         upperRightPanel.add(userIDTextField);
@@ -73,6 +81,9 @@ public class AdminPanel extends JPanel {
         lowerRightPanel.add(showGroupTotalButton);
         lowerRightPanel.add(showMessagesTotalButton);
         lowerRightPanel.add(showPositivePercentageButton);
+        lowerRightPanel.add(validateIDsButton);
+        lowerRightPanel.add(findLastUpdatedUserButton);
+
 
         rightPanel.add(upperRightPanel);
         rightPanel.add(middleRightPanel);
@@ -172,6 +183,20 @@ public class AdminPanel extends JPanel {
                 JOptionPane.showMessageDialog(null,
                         "Positive messages percentage: %" + positivePercentage,
                         "Positive messages percentage", JOptionPane.INFORMATION_MESSAGE);
+            }
+        });
+
+        validateIDsButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                validateIDs();
+            }
+        });
+
+        findLastUpdatedUserButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                findLastUpdatedUser();
             }
         });
     }
@@ -289,14 +314,73 @@ public class AdminPanel extends JPanel {
         postTweetButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                DefaultMutableTreeNode selectedUserNode = (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();
                 String textFieldInput = getFormattedDate() + " " + currentUser.getUserName() + ": " + tweetMessageTextField.getText();
                 currentUserNewsFeedTextField.setText(currentUserNewsFeedTextField.getText() + "\n" + textFieldInput);
                 messageModel.addElement(currentUserNewsFeedTextField);
                 currentUser.notifyObservers();
                 currentUser.getMessageArrayList().add(tweetMessageTextField.getText());
+
+                if (selectedUserNode != null && !selectedUserNode.getAllowsChildren()) {
+                    User selectedUser = (User) selectedUserNode.getUserObject();
+                    selectedUser.setLastUpdateTime(System.currentTimeMillis());
+                }
+                
             }
         });
     }
+
+    private void validateIDs() {
+        Set<String> usedIDs = new HashSet<>();
+        boolean allValid = true;
+
+        // Traverse the tree and validate user and group IDs
+        for (int i = 0; i < tree.getModel().getChildCount(tree.getModel().getRoot()); i++) {
+            DefaultMutableTreeNode node = (DefaultMutableTreeNode) tree.getModel().getChild(tree.getModel().getRoot(), i);
+
+            if (node.getAllowsChildren()) {
+                Group group = (Group) node.getUserObject();
+                String groupID = group.getID();
+                if (!isValidID(groupID, usedIDs)) {
+                    allValid = false;
+                    break;
+                }
+            } else {
+                User user = (User) node.getUserObject();
+                String userID = user.getID();
+                if (!isValidID(userID, usedIDs)) {
+                    allValid = false;
+                    break;
+                }
+            }
+        }
+
+        // Display validation result
+        if (allValid) {
+            JOptionPane.showMessageDialog(null, "All IDs are valid.", "ID Validation", JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            JOptionPane.showMessageDialog(null, "Invalid IDs found. Please ensure all IDs are unique and do not contain spaces.",
+                    "ID Validation Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private boolean isValidID(String id, Set<String> usedIDs) {
+        // Check if the ID is not empty and does not contain spaces
+        if (id == null || id.trim().isEmpty() || id.contains(" ")) {
+            return false;
+        }
+    
+        // Check if the ID is unique
+        if (usedIDs.contains(id)) {
+            return false;
+        }
+    
+        // Add the ID to the set of used IDs
+        usedIDs.add(id);
+        return true;
+    }
+    
+
 
     public String getFormattedDate() {
         LocalDateTime date = LocalDateTime.now();
@@ -321,4 +405,43 @@ public class AdminPanel extends JPanel {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new AdminPanel().createAndShowGUI());
     }
+
+    private void findLastUpdatedUser() {
+        User lastUpdatedUser = findLastUpdatedUserRecursively((DefaultMutableTreeNode) tree.getModel().getRoot());
+        if (lastUpdatedUser != null) {
+            JOptionPane.showMessageDialog(null, "Last updated user: " + lastUpdatedUser.getUserName(),
+                    "Last Updated User", JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            JOptionPane.showMessageDialog(null, "No user found.", "Last Updated User", JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+
+    private User findLastUpdatedUserRecursively(DefaultMutableTreeNode node) {
+        User lastUpdatedUser = null;
+        long maxUpdateTime = Long.MIN_VALUE;
+    
+        for (int i = 0; i < tree.getModel().getChildCount(node); i++) {
+            DefaultMutableTreeNode childNode = (DefaultMutableTreeNode) tree.getModel().getChild(node, i);
+    
+            if (childNode.getAllowsChildren()) {
+                // It's a Group node, recursively search within the group
+                User userInGroup = findLastUpdatedUserRecursively(childNode);
+                if (userInGroup != null && userInGroup.getLastUpdateTime() > maxUpdateTime) {
+                    lastUpdatedUser = userInGroup;
+                    maxUpdateTime = userInGroup.getLastUpdateTime();
+                }
+            } else {
+                // It's a User node
+                User user = (User) childNode.getUserObject();
+                if (user.getLastUpdateTime() > maxUpdateTime) {
+                    lastUpdatedUser = user;
+                    maxUpdateTime = user.getLastUpdateTime();
+                }
+            }
+        }
+    
+        return lastUpdatedUser;
+    }
+
+    
 }

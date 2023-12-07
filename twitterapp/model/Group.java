@@ -9,10 +9,14 @@ public class Group extends DefaultMutableTreeNode implements Composite {
     private ArrayList<Composite> compositeList = new ArrayList<>();
     private String groupID;
     private String groupName;
+    private long creationTime; // create time attribute
+
 
     public Group(String groupName) {
         this.groupID = UUID.randomUUID().toString();
         this.groupName = groupName;
+        this.creationTime = System.currentTimeMillis(); // Initialize creationTime
+
     }
 
     public ArrayList<Composite> getCompositeList() {
@@ -20,6 +24,14 @@ public class Group extends DefaultMutableTreeNode implements Composite {
     }
     public void setList(ArrayList<Composite> compositeArrayList) {
         this.compositeList = compositeArrayList;
+    }
+
+    public String getID() {
+        return groupID;
+    }
+
+    public long getCreationTime() {
+        return creationTime;
     }
 
     // Visitor pattern accept method for visitors
